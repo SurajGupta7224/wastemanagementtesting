@@ -1,9 +1,7 @@
-// adminFrontend/src/pages/ModulesPage.jsx
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { BASE_URL } from "../services/api";
 import { toast } from "react-toastify";
 
-/* --- Small Icon component (same as your CitiesPage) --- */
 function Icon({ name, className = "" }) {
   const common = `inline-block align-middle ${className}`;
   switch (name) {
@@ -41,7 +39,6 @@ function Icon({ name, className = "" }) {
   }
 }
 
-/* --- Confirm modal (same compact one) --- */
 function ConfirmModal({ open, title = "Confirm", message = "Are you sure?", confirmText = "Yes", cancelText = "No", onConfirm = () => {}, onCancel = () => {} }) {
   if (!open) return null;
   return (
@@ -61,52 +58,46 @@ function ConfirmModal({ open, title = "Confirm", message = "Are you sure?", conf
   );
 }
 
-/* --- Main ModulesPage --- */
-export default function ModulesPage() {
-  const [modules, setModules] = useState([]);
+export default function ActionsPage() {
+  const [actions, setActions] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 0, from: 0, to: 0 });
   const [loading, setLoading] = useState(false);
-
   const [search, setSearch] = useState("");
   const [limit, setLimit] = useState(10);
   const [page, setPage] = useState(1);
-
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ code: "", title: "" });
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
-
-  const [confirmAction, setConfirmAction] = useState(null); // { type: 'delete', module }
+  const [confirmAction, setConfirmAction] = useState(null);
   const searchTimerRef = useRef(null);
 
-  const fetchModules = useCallback(async (opts = {}) => {
+  const fetchActions = useCallback(async (opts = {}) => {
     const qPage = opts.page ?? page;
     const qLimit = opts.limit ?? limit;
     const qSearch = typeof opts.search !== "undefined" ? opts.search : search;
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: qPage, limit: qLimit, search: qSearch || "" });
-      // your BASE_URL includes /api/admin as you said
-      const res = await fetch(`${BASE_URL}/modules?${params.toString()}`, { credentials: "include" });
+      const res = await fetch(`${BASE_URL}/actions?${params.toString()}`, { credentials: "include" });
       const json = await res.json();
       if (res.ok || json.status === 1) {
-        setModules(json.data || json || []);
+        setActions(json.data || json || []);
         setMeta(json.meta || { total: (json.data || []).length, page: qPage, limit: qLimit, totalPages: 1, from: 1, to: (json.data || []).length });
         setPage(qPage);
         setLimit(qLimit);
       } else {
-        toast.error(json.message || "Failed to load modules");
+        toast.error(json.message || "Failed to load actions");
       }
     } catch (err) {
-      toast.error(err.message || "Network error while fetching modules");
+      toast.error(err.message || "Network error while fetching actions");
     } finally {
       setLoading(false);
     }
   }, [page, limit, search]);
 
   useEffect(() => {
-    fetchModules({ page: 1, limit: 10 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchActions({ page: 1, limit: 10 });
   }, []);
 
   function onSearchChange(e) {
@@ -114,7 +105,7 @@ export default function ModulesPage() {
     setSearch(v);
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => {
-      fetchModules({ page: 1, limit, search: v });
+      fetchActions({ page: 1, limit, search: v });
       searchTimerRef.current = null;
     }, 400);
   }
@@ -122,12 +113,12 @@ export default function ModulesPage() {
   const onLimitChange = (e) => {
     const newLimit = parseInt(e.target.value, 10) || 10;
     setLimit(newLimit);
-    fetchModules({ page: 1, limit: newLimit, search });
+    fetchActions({ page: 1, limit: newLimit, search });
   };
 
   const goToPage = (p) => {
     if (p < 1 || p > (meta.totalPages || 1)) return;
-    fetchModules({ page: p, limit, search });
+    fetchActions({ page: p, limit, search });
   };
   const prev = () => goToPage(page - 1);
   const next = () => goToPage(page + 1);
@@ -152,9 +143,9 @@ export default function ModulesPage() {
     setShowModal(true);
   }
 
-  async function openEdit(mod) {
-    setEditingId(mod.id);
-    setForm({ code: mod.code || "", title: mod.title || "" });
+  async function openEdit(a) {
+    setEditingId(a.id);
+    setForm({ code: a.code || "", title: a.title || "" });
     setShowModal(true);
   }
 
@@ -169,7 +160,7 @@ export default function ModulesPage() {
       const payload = { code: form.code.trim(), title: form.title.trim() };
       let res, json;
       if (editingId) {
-        res = await fetch(`${BASE_URL}/modules/${editingId}`, {
+        res = await fetch(`${BASE_URL}/actions/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -177,7 +168,7 @@ export default function ModulesPage() {
         });
         json = await res.json();
       } else {
-        res = await fetch(`${BASE_URL}/modules`, {
+        res = await fetch(`${BASE_URL}/actions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -190,20 +181,20 @@ export default function ModulesPage() {
         toast.error(json.message || "Save failed");
         return;
       }
-      toast.success(editingId ? "Module updated" : "Module created");
+      toast.success(editingId ? "Action updated" : "Action created");
       setShowModal(false);
       setEditingId(null);
-      fetchModules({ page: 1, limit, search: "" });
+      fetchActions({ page: 1, limit, search: "" });
     } catch (err) {
-      toast.error(err.message || "Network error while saving module");
+      toast.error(err.message || "Network error while saving action");
     } finally {
       setSaving(false);
     }
   }
 
-  async function doDelete(mod) {
+  async function doDelete(a) {
     try {
-      const res = await fetch(`${BASE_URL}/modules/${mod.id}`, {
+      const res = await fetch(`${BASE_URL}/actions/${a.id}`, {
         method: "DELETE",
         credentials: "include"
       });
@@ -212,8 +203,8 @@ export default function ModulesPage() {
         toast.error(json.message || "Delete failed");
         return;
       }
-      toast.success("Module deleted");
-      fetchModules({ page: 1, limit, search: "" });
+      toast.success("Action deleted");
+      fetchActions({ page: 1, limit, search: "" });
     } catch (err) {
       toast.error(err.message || "Network error while deleting");
     }
@@ -223,8 +214,8 @@ export default function ModulesPage() {
     <div className="p-6 mx-auto">
       <div className="flex items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Modules</h1>
-          <p className="text-sm text-gray-500 mt-1">Create, edit and manage application modules.</p>
+          <h1 className="text-2xl font-semibold text-gray-800">Actions</h1>
+          <p className="text-sm text-gray-500 mt-1">Create, edit and manage actions (create, view, edit, delete, export).</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -238,11 +229,11 @@ export default function ModulesPage() {
           </div>
 
           <div>
-            <input value={search} onChange={onSearchChange} placeholder="Search modules..." className="border rounded px-3 py-2 w-64" />
+            <input value={search} onChange={onSearchChange} placeholder="Search actions..." className="border rounded px-3 py-2 w-64" />
           </div>
 
           <button onClick={openAdd} className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded shadow">
-            <Icon name="plus" /> Add Module
+            <Icon name="plus" /> Add Action
           </button>
         </div>
       </div>
@@ -262,19 +253,19 @@ export default function ModulesPage() {
             <tbody className="bg-white">
               {loading ? (
                 <tr><td colSpan="5" className="px-4 py-8 text-center text-gray-500"><Icon name="spinner" /> <span className="ml-2">Loading…</span></td></tr>
-              ) : modules.length === 0 ? (
-                <tr><td colSpan="5" className="px-4 py-8 text-center text-gray-500">No modules available</td></tr>
+              ) : actions.length === 0 ? (
+                <tr><td colSpan="5" className="px-4 py-8 text-center text-gray-500">No actions available</td></tr>
               ) : (
-                modules.map((m, idx) => (
-                  <tr key={m.id} className="border-t hover:bg-gray-50">
+                actions.map((a, idx) => (
+                  <tr key={a.id} className="border-t hover:bg-gray-50">
                     <td className="px-4 py-3">{(meta.from || 0) + idx + 1}</td>
-                    <td className="px-4 py-3 font-medium">{m.code}</td>
-                    <td className="px-4 py-3">{m.title}</td>
-                    <td className="px-4 py-3 text-gray-600">{m.created_at ? new Date(m.created_at).toLocaleString() : "-"}</td>
+                    <td className="px-4 py-3 font-medium">{a.code}</td>
+                    <td className="px-4 py-3">{a.title}</td>
+                    <td className="px-4 py-3 text-gray-600">{a.created_at ? new Date(a.created_at).toLocaleString() : "-"}</td>
                     <td className="px-4 py-3">
                       <div className="inline-flex gap-2">
-                        <button onClick={() => openEdit(m)} title="Edit" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50"><Icon name="pencil" /></button>
-                        <button onClick={() => setConfirmAction({ type: "delete", module: m })} title="Delete" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50 text-red-600"><Icon name="trash" /></button>
+                        <button onClick={() => openEdit(a)} title="Edit" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50"><Icon name="pencil" /></button>
+                        <button onClick={() => setConfirmAction({ type: "delete", action: a })} title="Delete" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50 text-red-600"><Icon name="trash" /></button>
                       </div>
                     </td>
                   </tr>
@@ -301,19 +292,19 @@ export default function ModulesPage() {
           <div className="fixed inset-0 bg-black opacity-40" onClick={() => setShowModal(false)} />
           <form onSubmit={handleSave} className="relative z-60 bg-white rounded-lg shadow-xl w-full max-w-2xl p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">{editingId ? "Edit Module" : "Add Module"}</h3>
+              <h3 className="text-lg font-medium text-gray-900">{editingId ? "Edit Action" : "Add Action"}</h3>
               <button type="button" onClick={() => { setShowModal(false); setEditingId(null); }} className="text-gray-500">✕</button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
-                <input value={form.code} onChange={e => setFormField("code", e.target.value)} className="w-full border rounded px-3 py-2" placeholder="example: vehicles" />
+                <input value={form.code} onChange={e => setFormField("code", e.target.value)} className="w-full border rounded px-3 py-2" placeholder="example: create" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                <input value={form.title} onChange={e => setFormField("title", e.target.value)} className="w-full border rounded px-3 py-2" placeholder="example: Vehicles" />
+                <input value={form.title} onChange={e => setFormField("title", e.target.value)} className="w-full border rounded px-3 py-2" placeholder="example: Create" />
               </div>
             </div>
 
@@ -330,15 +321,15 @@ export default function ModulesPage() {
 
       <ConfirmModal
         open={!!confirmAction}
-        title={confirmAction?.type === "delete" ? "Delete module?" : "Confirm"}
-        message={confirmAction?.type === "delete" ? `Delete module "${confirmAction.module.title}"? This cannot be undone.` : "Are you sure?"}
+        title={confirmAction?.type === "delete" ? "Delete action?" : "Confirm"}
+        message={confirmAction?.type === "delete" ? `Delete action "${confirmAction.action.title}"? This cannot be undone.` : "Are you sure?"}
         confirmText={confirmAction?.type === "delete" ? "Delete" : "Yes"}
         cancelText="Cancel"
         onConfirm={async () => {
           if (!confirmAction) return;
-          const { type, module } = confirmAction;
+          const { type, action } = confirmAction;
           setConfirmAction(null);
-          if (type === "delete") await doDelete(module);
+          if (type === "delete") await doDelete(action);
         }}
         onCancel={() => setConfirmAction(null)}
       />

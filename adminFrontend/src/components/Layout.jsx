@@ -1,41 +1,77 @@
-import React, { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+// src/components/Layout.jsx
+import React, { useEffect, useState, lazy, Suspense } from "react";
+import { Routes, Route } from "react-router-dom";
+
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
-import Footer from "./Footer";
+
+import Dashboard from "../pages/Dashboard";
+import ModulesPage from "../pages/ModulesPage";
+import ModuleGenericPage from "../pages/ModuleGenericPage";
+
+import { BASE_URL } from "../services/api";
+
 export default function Layout() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-  const leftOffset = () => {
-    if (typeof window === "undefined") return collapsed ? 80 : 288;
-    return window.innerWidth >= 768 ? (collapsed ? 80 : 288) : 0;
-  };
-  const [leftPx, setLeftPx] = useState(leftOffset());
+  const [modules, setModules] = useState([]);
+
   useEffect(() => {
-    function onResize() {
-      setLeftPx(leftOffset());
+    fetch(`${BASE_URL}/modules`)
+      .then(res => res.json())
+      .then(json => setModules(json.data || []))
+      .catch(() => setModules([]));
+  }, []);
+
+  const loadComponent = (code) => {
+    const fileName = code.charAt(0).toUpperCase() + code.slice(1) + "Page";
+
+    try {
+      return lazy(() => import(`../pages/${fileName}.jsx`));
+    } catch (err) {
+      return null;
     }
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [collapsed]);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar isOpen={mobileOpen} onClose={() => setMobileOpen(false)} collapsed={collapsed} />
-      <Topbar
-        onOpenMobile={() => setMobileOpen(true)}
-        collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed((s) => !s)}
-      />
-      <main
-        className="pt-16 pb-16 min-h-[calc(100vh-4rem)]"
-        style={{ marginLeft: leftPx, transition: "margin-left 200ms ease" }}
-      >
+    <div className="min-h-screen flex">
+      <Sidebar />
+
+      <div style={{ marginLeft: 288 }} className="flex-1 bg-gray-50 min-h-screen pt-20">
+        <Topbar />
+
         <div className="p-6">
-          <Outlet />
+          <Suspense fallback={<div>Loading...</div>}>
+            <Routes>
+              <Route index element={<Dashboard />} />
+
+              {modules.map((m) => {
+                const code = m.code;
+
+                if (code === "modules") {
+                  return <Route key={code} path={code} element={<ModulesPage />} />;
+                }
+
+                const DynamicPage = loadComponent(code);
+
+                return (
+                  <Route
+                    key={code}
+                    path={code}
+                    element={
+                      DynamicPage ? (
+                        <DynamicPage />
+                      ) : (
+                        <ModuleGenericPage module={m} />
+                      )
+                    }
+                  />
+                );
+              })}
+
+              <Route path="*" element={<Dashboard />} />
+            </Routes>
+          </Suspense>
         </div>
-      </main>
-      <Footer collapsed={collapsed} />
+      </div>
     </div>
   );
 }

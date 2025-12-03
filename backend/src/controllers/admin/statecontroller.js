@@ -1,9 +1,11 @@
+
 const { State } = require("../../models");
 const { Op } = require("sequelize");
 // ===========================
 // Get All States
 // ===========================
 exports.getStates = async (req, res) => {
+  
   try {
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
     const limit = Math.max(parseInt(req.query.limit || "10", 10), 1);

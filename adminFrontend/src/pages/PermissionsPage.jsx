@@ -1,9 +1,8 @@
-// src/pages/CitiesPage.jsx
+// adminFrontend/src/pages/PermissionsPage.jsx
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { BASE_URL } from "../services/api";
 import { toast } from "react-toastify";
 
-/* --- Small Icon component --- */
 function Icon({ name, className = "" }) {
   const common = `inline-block align-middle ${className}`;
   switch (name) {
@@ -19,14 +18,14 @@ function Icon({ name, className = "" }) {
         <svg className={common} viewBox="0 0 24 24" width="16" height="16" fill="none">
           <path d="M3 6h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M8 6V4h8v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "plus":
       return (
         <svg className={common} viewBox="0 0 24 24" width="16" height="16" fill="none">
-          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "spinner":
@@ -41,7 +40,6 @@ function Icon({ name, className = "" }) {
   }
 }
 
-/* --- Small confirm modal (compact) --- */
 function ConfirmModal({ open, title = "Confirm", message = "Are you sure?", confirmText = "Yes", cancelText = "No", onConfirm = () => {}, onCancel = () => {} }) {
   if (!open) return null;
   return (
@@ -61,58 +59,11 @@ function ConfirmModal({ open, title = "Confirm", message = "Are you sure?", conf
   );
 }
 
-/* --- SearchableSelect for states --- */
-function SearchableSelect({ label, options = [], value, onChange, placeholder = "Search...", disabled = false }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const ref = useRef(null);
+export default function PermissionsPage() {
+  const [permissions, setPermissions] = useState([]);
+  const [modules, setModules] = useState([]);
+  const [actions, setActions] = useState([]);
 
-  useEffect(() => {
-    function onDoc(e) {
-      if (!ref.current) return;
-      if (!ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
-
-  const filtered = options.filter(o => String(o.name).toLowerCase().includes(query.toLowerCase()));
-  const selected = options.find(o => String(o.id) === String(value));
-
-  return (
-    <div ref={ref} className="relative">
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <div className="relative">
-        <button type="button" disabled={disabled} onClick={() => setOpen(s => !s)} className={`w-full text-left px-3 py-2 border rounded-md shadow-sm bg-white flex items-center justify-between ${disabled ? "opacity-60" : ""}`}>
-          <span className={`truncate ${selected ? "text-gray-900" : "text-gray-500"}`}>{selected ? selected.name : placeholder}</span>
-          <svg className="w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="none"><path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </button>
-
-        {open && (
-          <div className="absolute left-0 right-0 mt-2 z-40 bg-white border rounded-md shadow-lg">
-            <div className="p-2">
-              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Type to search..." className="w-full border rounded px-3 py-2 text-sm" autoFocus/>
-            </div>
-            <div className="max-h-48 overflow-auto">
-              {filtered.length === 0 ? <div className="p-3 text-sm text-gray-500">No results</div> : filtered.map(opt => (
-                <button key={opt.id} onClick={() => { onChange(String(opt.id)); setOpen(false); setQuery(""); }} className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm">{opt.name}</button>
-              ))}
-            </div>
-            <div className="flex items-center justify-end p-2 border-t">
-              <button type="button" onClick={() => { onChange(""); setOpen(false); setQuery(""); }} className="text-xs text-gray-500 mr-2">Clear</button>
-              <button type="button" onClick={() => setOpen(false)} className="text-xs text-gray-500">Close</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* --- Main CitiesPage --- */
-export default function CitiesPage() {
-  const [cities, setCities] = useState([]);
-  const [states, setStates] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 0, from: 0, to: 0 });
   const [loading, setLoading] = useState(false);
 
@@ -121,48 +72,61 @@ export default function CitiesPage() {
   const [page, setPage] = useState(1);
 
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ state_id: "", name: "", city_code: "", status: 1 });
+  const [form, setForm] = useState({ module_id: "", action_id: "", label: "" });
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  const [confirmAction, setConfirmAction] = useState(null); // { type: 'delete'|'status', city }
+  const [confirmAction, setConfirmAction] = useState(null);
   const searchTimerRef = useRef(null);
 
-  const fetchStates = useCallback(async () => {
+  const fetchModules = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE_URL}/allstates`, { credentials: "include" });
+      const res = await fetch(`${BASE_URL}/modules`, { credentials: "include" });
       const json = await res.json();
-      if (res.ok || json.status === 1) setStates(json.data || json || []);
-    } catch (err) {}
+      if (res.ok || json.status === 1) setModules(json.data || json || []);
+    } catch (err) {
+      toast.error("Failed to load modules");
+    }
   }, []);
 
-  const fetchCities = useCallback(async (opts = {}) => {
+  const fetchActions = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/actions`, { credentials: "include" });
+      const json = await res.json();
+      if (res.ok || json.status === 1) setActions(json.data || json || []);
+    } catch (err) {
+      toast.error("Failed to load actions");
+    }
+  }, []);
+
+  const fetchPermissions = useCallback(async (opts = {}) => {
     const qPage = opts.page ?? page;
     const qLimit = opts.limit ?? limit;
     const qSearch = typeof opts.search !== "undefined" ? opts.search : search;
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: qPage, limit: qLimit, search: qSearch || "" });
-      const res = await fetch(`${BASE_URL}/cities?${params.toString()}`, { credentials: "include" });
+      const res = await fetch(`${BASE_URL}/permissions?${params.toString()}`, { credentials: "include" });
       const json = await res.json();
       if (res.ok || json.status === 1) {
-        setCities(json.data || []);
-        setMeta(json.meta || { total: 0, page: qPage, limit: qLimit, totalPages: 0, from: 0, to: 0 });
+        setPermissions(json.data || json || []);
+        setMeta(json.meta || { total: (json.data || []).length, page: qPage, limit: qLimit, totalPages: 1, from: 1, to: (json.data || []).length });
         setPage(qPage);
         setLimit(qLimit);
       } else {
-        toast.error(json.message || "Failed to load cities");
+        toast.error(json.message || "Failed to load permissions");
       }
     } catch (err) {
-      toast.error(err.message || "Network error while fetching cities");
+      toast.error(err.message || "Network error while fetching permissions");
     } finally {
       setLoading(false);
     }
   }, [page, limit, search]);
 
   useEffect(() => {
-    fetchStates();
-    fetchCities({ page: 1, limit: 10 });
+    fetchModules();
+    fetchActions();
+    fetchPermissions({ page: 1, limit: 10 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -171,7 +135,7 @@ export default function CitiesPage() {
     setSearch(v);
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => {
-      fetchCities({ page: 1, limit, search: v });
+      fetchPermissions({ page: 1, limit, search: v });
       searchTimerRef.current = null;
     }, 400);
   }
@@ -179,12 +143,12 @@ export default function CitiesPage() {
   const onLimitChange = (e) => {
     const newLimit = parseInt(e.target.value, 10) || 10;
     setLimit(newLimit);
-    fetchCities({ page: 1, limit: newLimit, search });
+    fetchPermissions({ page: 1, limit: newLimit, search });
   };
 
   const goToPage = (p) => {
     if (p < 1 || p > (meta.totalPages || 1)) return;
-    fetchCities({ page: p, limit, search });
+    fetchPermissions({ page: p, limit, search });
   };
   const prev = () => goToPage(page - 1);
   const next = () => goToPage(page + 1);
@@ -205,38 +169,35 @@ export default function CitiesPage() {
 
   function openAdd() {
     setEditingId(null);
-    setForm({ state_id: "", name: "", city_code: "", status: 1 });
+    setForm({ module_id: "", action_id: "", label: "" });
     setShowModal(true);
   }
 
-  async function openEdit(city) {
-    setEditingId(city.id);
-    setForm({
-      state_id: String(city.state_id || (city.state && city.state.id) || ""),
-      name: city.name || "",
-      city_code: city.city_code || "",
-      status: city.status ?? 1
-    });
+  async function openEdit(p) {
+    setEditingId(p.id);
+    setForm({ module_id: String(p.module_id || (p.module && p.module.id) || ""), action_id: String(p.action_id || (p.action && p.action.id) || ""), label: p.label || "" });
     setShowModal(true);
+  }
+
+  function computedPermissionKey() {
+    const mod = modules.find(m => String(m.id) === String(form.module_id));
+    const act = actions.find(a => String(a.id) === String(form.action_id));
+    if (!mod || !act) return "";
+    return `${mod.code}.${act.code}`;
   }
 
   async function handleSave(e) {
     e.preventDefault();
-    if (!form.state_id || !form.name.trim()) {
-      toast.error("State and city name are required");
+    if (!form.module_id || !form.action_id) {
+      toast.error("Module and Action are required");
       return;
     }
     setSaving(true);
     try {
-      const payload = {
-        state_id: parseInt(form.state_id, 10),
-        name: form.name.trim(),
-        city_code: (form.city_code || "").trim() || null,
-        status: form.status
-      };
+      const payload = { module_id: parseInt(form.module_id, 10), action_id: parseInt(form.action_id, 10), label: (form.label || "").trim() || computedPermissionKey() };
       let res, json;
       if (editingId) {
-        res = await fetch(`${BASE_URL}/cities/${editingId}`, {
+        res = await fetch(`${BASE_URL}/permissions/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -244,7 +205,7 @@ export default function CitiesPage() {
         });
         json = await res.json();
       } else {
-        res = await fetch(`${BASE_URL}/cities`, {
+        res = await fetch(`${BASE_URL}/permissions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -257,45 +218,20 @@ export default function CitiesPage() {
         toast.error(json.message || "Save failed");
         return;
       }
-      toast.success(editingId ? "City updated" : "City created");
+      toast.success(editingId ? "Permission updated" : "Permission created");
       setShowModal(false);
       setEditingId(null);
-      fetchCities({ page: 1, limit, search: "" });
+      fetchPermissions({ page: 1, limit, search: "" });
     } catch (err) {
-      toast.error(err.message || "Network error while saving city");
+      toast.error(err.message || "Network error while saving permission");
     } finally {
       setSaving(false);
     }
   }
 
-  async function doToggleStatus(city) {
-    const newStatus = city.status === 1 ? 0 : 1;
-    const old = [...cities];
-    setCities(prev => prev.map(c => (c.id === city.id ? { ...c, status: newStatus } : c)));
+  async function doDelete(p) {
     try {
-      const res = await fetch(`${BASE_URL}/cities/${city.id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ status: newStatus })
-      });
-      const json = await res.json();
-      const appError = (typeof json.status !== "undefined" && (json.status === 0 || json.status === "0"));
-      if (!res.ok || appError) {
-        setCities(old);
-        toast.error(json.message || "Failed to update status");
-        return;
-      }
-      toast.success(newStatus === 1 ? "Activated" : "Deactivated");
-    } catch (err) {
-      setCities(old);
-      toast.error(err.message || "Network error while updating status");
-    }
-  }
-
-  async function doDelete(city) {
-    try {
-      const res = await fetch(`${BASE_URL}/cities/${city.id}`, {
+      const res = await fetch(`${BASE_URL}/permissions/${p.id}`, {
         method: "DELETE",
         credentials: "include"
       });
@@ -304,19 +240,19 @@ export default function CitiesPage() {
         toast.error(json.message || "Delete failed");
         return;
       }
-      toast.success("City deleted");
-      fetchCities({ page: 1, limit, search: "" });
+      toast.success("Permission deleted");
+      fetchPermissions({ page: 1, limit, search: "" });
     } catch (err) {
       toast.error(err.message || "Network error while deleting");
     }
   }
 
   return (
-    <div className="p-6  mx-auto">
+    <div className="p-6 mx-auto">
       <div className="flex items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Cities</h1>
-          <p className="text-sm text-gray-500 mt-1">Create, edit and manage cities.</p>
+          <h1 className="text-2xl font-semibold text-gray-800">Permissions</h1>
+          <p className="text-sm text-gray-500 mt-1">Create and manage module × action permissions.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -330,11 +266,11 @@ export default function CitiesPage() {
           </div>
 
           <div>
-            <input value={search} onChange={onSearchChange} placeholder="Search cities..." className="border rounded px-3 py-2 w-64" />
+            <input value={search} onChange={onSearchChange} placeholder="Search permissions..." className="border rounded px-3 py-2 w-64" />
           </div>
 
           <button onClick={openAdd} className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded shadow">
-            <Icon name="plus" /> Add City
+            <Icon name="plus" /> Add Permission
           </button>
         </div>
       </div>
@@ -345,10 +281,10 @@ export default function CitiesPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">#</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">State</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">City</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Code</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Module</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Permission Key</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Label</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Created</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Actions</th>
               </tr>
@@ -356,24 +292,21 @@ export default function CitiesPage() {
             <tbody className="bg-white">
               {loading ? (
                 <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-500"><Icon name="spinner" /> <span className="ml-2">Loading…</span></td></tr>
-              ) : cities.length === 0 ? (
-                <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-500">No data available</td></tr>
+              ) : permissions.length === 0 ? (
+                <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-500">No permissions available</td></tr>
               ) : (
-                cities.map((c, idx) => (
-                  <tr key={c.id} className="border-t hover:bg-gray-50">
-                    <td className="px-4 py-3">{(meta.from || 0) + idx}</td>
-                    <td className="px-4 py-3">{(c.state && c.state.name) || c.state_name || "-"}</td>
-                    <td className="px-4 py-3 font-medium">{c.name}</td>
-                    <td className="px-4 py-3">{c.city_code || "-"}</td>
-                    <td className="px-4 py-3">
-                      {c.status === 1 ? <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Active</span> : <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Inactive</span>}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{c.created_at ? new Date(c.created_at).toLocaleString() : "-"}</td>
+                permissions.map((p, idx) => (
+                  <tr key={p.id} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-3">{(meta.from || 0) + idx + 1}</td>
+                    <td className="px-4 py-3 font-medium">{(p.module && p.module.title) || p.module_code || "-"}</td>
+                    <td className="px-4 py-3">{(p.action && p.action.title) || p.action_code || "-"}</td>
+                    <td className="px-4 py-3">{p.permission_key}</td>
+                    <td className="px-4 py-3">{p.label || "-"}</td>
+                    <td className="px-4 py-3 text-gray-600">{p.created_at ? new Date(p.created_at).toLocaleString() : "-"}</td>
                     <td className="px-4 py-3">
                       <div className="inline-flex gap-2">
-                        <button onClick={() => openEdit(c)} title="Edit" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50"><Icon name="pencil" /></button>
-                        <button onClick={() => setConfirmAction({ type: "status", city: c })} title="Toggle status" className={`px-3 py-1 rounded text-xs font-medium ${c.status === 1 ? "bg-red-50 text-red-700 border" : "bg-emerald-50 text-emerald-700 border"}`}>{c.status === 1 ? "Deactivate" : "Activate"}</button>
-                        {/* <button onClick={() => setConfirmAction({ type: "delete", city: c })} title="Delete" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50 text-red-600"><Icon name="trash" /></button> */}
+                        <button onClick={() => openEdit(p)} title="Edit" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50"><Icon name="pencil" /></button>
+                        <button onClick={() => setConfirmAction({ type: "delete", permission: p })} title="Delete" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50 text-red-600"><Icon name="trash" /></button>
                       </div>
                     </td>
                   </tr>
@@ -400,31 +333,40 @@ export default function CitiesPage() {
           <div className="fixed inset-0 bg-black opacity-40" onClick={() => setShowModal(false)} />
           <form onSubmit={handleSave} className="relative z-60 bg-white rounded-lg shadow-xl w-full max-w-2xl p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">{editingId ? "Edit City" : "Add City"}</h3>
+              <h3 className="text-lg font-medium text-gray-900">{editingId ? "Edit Permission" : "Add Permission"}</h3>
               <button type="button" onClick={() => { setShowModal(false); setEditingId(null); }} className="text-gray-500">✕</button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-              <SearchableSelect label="State" options={states} value={form.state_id} onChange={(v) => setFormField("state_id", v)} placeholder="Select state" />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City name</label>
-                <input value={form.name} onChange={e => setFormField("name", e.target.value)} className="w-full border rounded px-3 py-2" placeholder="e.g. Pune" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Module</label>
+                <select value={form.module_id} onChange={e => setFormField("module_id", e.target.value)} className="w-full border rounded px-3 py-2">
+                  <option value="">-- select module --</option>
+                  {modules.map(m => <option key={m.id} value={m.id}>{m.title} ({m.code})</option>)}
+                </select>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Code (optional)</label>
-                <input value={form.city_code} onChange={e => setFormField("city_code", e.target.value)} className="w-full border rounded px-3 py-2" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Action</label>
+                <select value={form.action_id} onChange={e => setFormField("action_id", e.target.value)} className="w-full border rounded px-3 py-2">
+                  <option value="">-- select action --</option>
+                  {actions.map(a => <option key={a.id} value={a.id}>{a.title} ({a.code})</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Permission Key</label>
+                <input value={computedPermissionKey()} readOnly className="w-full border rounded px-3 py-2 bg-gray-50" />
+              </div>
+
+              <div className="sm:col-span-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Label (optional)</label>
+                <input value={form.label} onChange={e => setFormField("label", e.target.value)} className="w-full border rounded px-3 py-2" placeholder="Friendly label (default: module.action)" />
               </div>
             </div>
 
             <div className="flex items-center justify-between mt-6">
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-gray-700">Status</label>
-                <select value={form.status} onChange={e => setFormField("status", parseInt(e.target.value, 10))} className="border rounded px-2 py-1 text-sm">
-                  <option value={1}>Active</option>
-                  <option value={0}>Inactive</option>
-                </select>
-              </div>
-
+              <div />
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => { setShowModal(false); setEditingId(null); }} className="px-4 py-2 bg-gray-100 rounded">Cancel</button>
                 <button type="submit" disabled={saving} className="px-4 py-2 bg-emerald-600 text-white rounded">{saving ? (<><Icon name="spinner" /></>) : (editingId ? "Update" : "Save")}</button>
@@ -436,16 +378,15 @@ export default function CitiesPage() {
 
       <ConfirmModal
         open={!!confirmAction}
-        title={confirmAction?.type === "delete" ? "Delete city?" : "Confirm status change"}
-        message={confirmAction?.type === "delete" ? `Delete city "${confirmAction.city.name}"? This cannot be undone.` : `${confirmAction?.city?.status === 1 ? "Deactivate" : "Activate"} city "${confirmAction?.city?.name}"?`}
-        confirmText={confirmAction?.type === "delete" ? "Delete" : (confirmAction?.city?.status === 1 ? "Deactivate" : "Activate")}
+        title={confirmAction?.type === "delete" ? "Delete permission?" : "Confirm"}
+        message={confirmAction?.type === "delete" ? `Delete permission "${confirmAction.permission.permission_key}"? This cannot be undone.` : "Are you sure?"}
+        confirmText={confirmAction?.type === "delete" ? "Delete" : "Yes"}
         cancelText="Cancel"
         onConfirm={async () => {
           if (!confirmAction) return;
-          const { type, city } = confirmAction;
+          const { type, permission } = confirmAction;
           setConfirmAction(null);
-          if (type === "status") await doToggleStatus(city);
-          if (type === "delete") await doDelete(city);
+          if (type === "delete") await doDelete(permission);
         }}
         onCancel={() => setConfirmAction(null)}
       />

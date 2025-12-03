@@ -1,9 +1,7 @@
-// adminFrontend/src/pages/ModulesPage.jsx
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { BASE_URL } from "../services/api";
 import { toast } from "react-toastify";
 
-/* --- Small Icon component (same as your CitiesPage) --- */
 function Icon({ name, className = "" }) {
   const common = `inline-block align-middle ${className}`;
   switch (name) {
@@ -41,7 +39,6 @@ function Icon({ name, className = "" }) {
   }
 }
 
-/* --- Confirm modal (same compact one) --- */
 function ConfirmModal({ open, title = "Confirm", message = "Are you sure?", confirmText = "Yes", cancelText = "No", onConfirm = () => {}, onCancel = () => {} }) {
   if (!open) return null;
   return (
@@ -61,52 +58,46 @@ function ConfirmModal({ open, title = "Confirm", message = "Are you sure?", conf
   );
 }
 
-/* --- Main ModulesPage --- */
-export default function ModulesPage() {
-  const [modules, setModules] = useState([]);
+export default function RolesPage() {
+  const [roles, setRoles] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 0, from: 0, to: 0 });
   const [loading, setLoading] = useState(false);
-
   const [search, setSearch] = useState("");
   const [limit, setLimit] = useState(10);
   const [page, setPage] = useState(1);
-
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ code: "", title: "" });
+  const [form, setForm] = useState({ name: "", description: "", status: 1 });
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
-
-  const [confirmAction, setConfirmAction] = useState(null); // { type: 'delete', module }
+  const [confirmAction, setConfirmAction] = useState(null);
   const searchTimerRef = useRef(null);
 
-  const fetchModules = useCallback(async (opts = {}) => {
+  const fetchRoles = useCallback(async (opts = {}) => {
     const qPage = opts.page ?? page;
     const qLimit = opts.limit ?? limit;
     const qSearch = typeof opts.search !== "undefined" ? opts.search : search;
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: qPage, limit: qLimit, search: qSearch || "" });
-      // your BASE_URL includes /api/admin as you said
-      const res = await fetch(`${BASE_URL}/modules?${params.toString()}`, { credentials: "include" });
+      const res = await fetch(`${BASE_URL}/roles?${params.toString()}`, { credentials: "include" });
       const json = await res.json();
       if (res.ok || json.status === 1) {
-        setModules(json.data || json || []);
+        setRoles(json.data || json || []);
         setMeta(json.meta || { total: (json.data || []).length, page: qPage, limit: qLimit, totalPages: 1, from: 1, to: (json.data || []).length });
         setPage(qPage);
         setLimit(qLimit);
       } else {
-        toast.error(json.message || "Failed to load modules");
+        toast.error(json.message || "Failed to load roles");
       }
     } catch (err) {
-      toast.error(err.message || "Network error while fetching modules");
+      toast.error(err.message || "Network error while fetching roles");
     } finally {
       setLoading(false);
     }
   }, [page, limit, search]);
 
   useEffect(() => {
-    fetchModules({ page: 1, limit: 10 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchRoles({ page: 1, limit: 10 });
   }, []);
 
   function onSearchChange(e) {
@@ -114,7 +105,7 @@ export default function ModulesPage() {
     setSearch(v);
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => {
-      fetchModules({ page: 1, limit, search: v });
+      fetchRoles({ page: 1, limit, search: v });
       searchTimerRef.current = null;
     }, 400);
   }
@@ -122,12 +113,12 @@ export default function ModulesPage() {
   const onLimitChange = (e) => {
     const newLimit = parseInt(e.target.value, 10) || 10;
     setLimit(newLimit);
-    fetchModules({ page: 1, limit: newLimit, search });
+    fetchRoles({ page: 1, limit: newLimit, search });
   };
 
   const goToPage = (p) => {
     if (p < 1 || p > (meta.totalPages || 1)) return;
-    fetchModules({ page: p, limit, search });
+    fetchRoles({ page: p, limit, search });
   };
   const prev = () => goToPage(page - 1);
   const next = () => goToPage(page + 1);
@@ -148,28 +139,28 @@ export default function ModulesPage() {
 
   function openAdd() {
     setEditingId(null);
-    setForm({ code: "", title: "" });
+    setForm({ name: "", description: "", status: 1 });
     setShowModal(true);
   }
 
-  async function openEdit(mod) {
-    setEditingId(mod.id);
-    setForm({ code: mod.code || "", title: mod.title || "" });
+  async function openEdit(role) {
+    setEditingId(role.id);
+    setForm({ name: role.name || "", description: role.description || "", status: role.status ?? 1 });
     setShowModal(true);
   }
 
   async function handleSave(e) {
     e.preventDefault();
-    if (!form.code.trim() || !form.title.trim()) {
-      toast.error("Code and title are required");
+    if (!form.name.trim()) {
+      toast.error("Role name is required");
       return;
     }
     setSaving(true);
     try {
-      const payload = { code: form.code.trim(), title: form.title.trim() };
+      const payload = { name: form.name.trim(), description: (form.description || "").trim(), status: form.status };
       let res, json;
       if (editingId) {
-        res = await fetch(`${BASE_URL}/modules/${editingId}`, {
+        res = await fetch(`${BASE_URL}/roles/${editingId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -177,7 +168,7 @@ export default function ModulesPage() {
         });
         json = await res.json();
       } else {
-        res = await fetch(`${BASE_URL}/modules`, {
+        res = await fetch(`${BASE_URL}/roles`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -190,20 +181,20 @@ export default function ModulesPage() {
         toast.error(json.message || "Save failed");
         return;
       }
-      toast.success(editingId ? "Module updated" : "Module created");
+      toast.success(editingId ? "Role updated" : "Role created");
       setShowModal(false);
       setEditingId(null);
-      fetchModules({ page: 1, limit, search: "" });
+      fetchRoles({ page: 1, limit, search: "" });
     } catch (err) {
-      toast.error(err.message || "Network error while saving module");
+      toast.error(err.message || "Network error while saving role");
     } finally {
       setSaving(false);
     }
   }
 
-  async function doDelete(mod) {
+  async function doDelete(role) {
     try {
-      const res = await fetch(`${BASE_URL}/modules/${mod.id}`, {
+      const res = await fetch(`${BASE_URL}/roles/${role.id}`, {
         method: "DELETE",
         credentials: "include"
       });
@@ -212,8 +203,8 @@ export default function ModulesPage() {
         toast.error(json.message || "Delete failed");
         return;
       }
-      toast.success("Module deleted");
-      fetchModules({ page: 1, limit, search: "" });
+      toast.success("Role deleted");
+      fetchRoles({ page: 1, limit, search: "" });
     } catch (err) {
       toast.error(err.message || "Network error while deleting");
     }
@@ -223,8 +214,8 @@ export default function ModulesPage() {
     <div className="p-6 mx-auto">
       <div className="flex items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Modules</h1>
-          <p className="text-sm text-gray-500 mt-1">Create, edit and manage application modules.</p>
+          <h1 className="text-2xl font-semibold text-gray-800">Roles</h1>
+          <p className="text-sm text-gray-500 mt-1">Create, edit and manage roles.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -238,11 +229,11 @@ export default function ModulesPage() {
           </div>
 
           <div>
-            <input value={search} onChange={onSearchChange} placeholder="Search modules..." className="border rounded px-3 py-2 w-64" />
+            <input value={search} onChange={onSearchChange} placeholder="Search roles..." className="border rounded px-3 py-2 w-64" />
           </div>
 
           <button onClick={openAdd} className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded shadow">
-            <Icon name="plus" /> Add Module
+            <Icon name="plus" /> Add Role
           </button>
         </div>
       </div>
@@ -253,28 +244,28 @@ export default function ModulesPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">#</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Code</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Title</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Created</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white">
               {loading ? (
                 <tr><td colSpan="5" className="px-4 py-8 text-center text-gray-500"><Icon name="spinner" /> <span className="ml-2">Loading…</span></td></tr>
-              ) : modules.length === 0 ? (
-                <tr><td colSpan="5" className="px-4 py-8 text-center text-gray-500">No modules available</td></tr>
+              ) : roles.length === 0 ? (
+                <tr><td colSpan="5" className="px-4 py-8 text-center text-gray-500">No roles available</td></tr>
               ) : (
-                modules.map((m, idx) => (
-                  <tr key={m.id} className="border-t hover:bg-gray-50">
+                roles.map((r, idx) => (
+                  <tr key={r.id} className="border-t hover:bg-gray-50">
                     <td className="px-4 py-3">{(meta.from || 0) + idx + 1}</td>
-                    <td className="px-4 py-3 font-medium">{m.code}</td>
-                    <td className="px-4 py-3">{m.title}</td>
-                    <td className="px-4 py-3 text-gray-600">{m.created_at ? new Date(m.created_at).toLocaleString() : "-"}</td>
+                    <td className="px-4 py-3 font-medium">{r.name}</td>
+                    <td className="px-4 py-3">{r.description || "-"}</td>
+                    <td className="px-4 py-3">{r.status === 1 ? <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Active</span> : <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Inactive</span>}</td>
                     <td className="px-4 py-3">
                       <div className="inline-flex gap-2">
-                        <button onClick={() => openEdit(m)} title="Edit" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50"><Icon name="pencil" /></button>
-                        <button onClick={() => setConfirmAction({ type: "delete", module: m })} title="Delete" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50 text-red-600"><Icon name="trash" /></button>
+                        <button onClick={() => openEdit(r)} title="Edit" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50"><Icon name="pencil" /></button>
+                        <button onClick={() => setConfirmAction({ type: "delete", role: r })} title="Delete" className="px-2 py-1 border rounded text-sm bg-white hover:bg-gray-50 text-red-600"><Icon name="trash" /></button>
                       </div>
                     </td>
                   </tr>
@@ -301,19 +292,27 @@ export default function ModulesPage() {
           <div className="fixed inset-0 bg-black opacity-40" onClick={() => setShowModal(false)} />
           <form onSubmit={handleSave} className="relative z-60 bg-white rounded-lg shadow-xl w-full max-w-2xl p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">{editingId ? "Edit Module" : "Add Module"}</h3>
+              <h3 className="text-lg font-medium text-gray-900">{editingId ? "Edit Role" : "Add Role"}</h3>
               <button type="button" onClick={() => { setShowModal(false); setEditingId(null); }} className="text-gray-500">✕</button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
-                <input value={form.code} onChange={e => setFormField("code", e.target.value)} className="w-full border rounded px-3 py-2" placeholder="example: vehicles" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input value={form.name} onChange={e => setFormField("name", e.target.value)} className="w-full border rounded px-3 py-2" placeholder="Role name (example: Admin)" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                <input value={form.title} onChange={e => setFormField("title", e.target.value)} className="w-full border rounded px-3 py-2" placeholder="example: Vehicles" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select value={form.status} onChange={e => setFormField("status", parseInt(e.target.value, 10))} className="w-full border rounded px-3 py-2">
+                  <option value={1}>Active</option>
+                  <option value={0}>Inactive</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea value={form.description} onChange={e => setFormField("description", e.target.value)} className="w-full border rounded px-3 py-2" rows={3} />
               </div>
             </div>
 
@@ -330,15 +329,15 @@ export default function ModulesPage() {
 
       <ConfirmModal
         open={!!confirmAction}
-        title={confirmAction?.type === "delete" ? "Delete module?" : "Confirm"}
-        message={confirmAction?.type === "delete" ? `Delete module "${confirmAction.module.title}"? This cannot be undone.` : "Are you sure?"}
+        title={confirmAction?.type === "delete" ? "Delete role?" : "Confirm"}
+        message={confirmAction?.type === "delete" ? `Delete role "${confirmAction.role.name}"? This cannot be undone.` : "Are you sure?"}
         confirmText={confirmAction?.type === "delete" ? "Delete" : "Yes"}
         cancelText="Cancel"
         onConfirm={async () => {
           if (!confirmAction) return;
-          const { type, module } = confirmAction;
+          const { type, role } = confirmAction;
           setConfirmAction(null);
-          if (type === "delete") await doDelete(module);
+          if (type === "delete") await doDelete(role);
         }}
         onCancel={() => setConfirmAction(null)}
       />

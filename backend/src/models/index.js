@@ -1,93 +1,110 @@
-// src/models/index.js
+const fs = require("fs");
 const path = require("path");
-const sequelize = require("../config/db"); // your initialized sequelize instance
 const Sequelize = require("sequelize");
+const sequelize = require("../config/db");
 
-/**
- * Helper to load a model file that may export either:
- *  - a model instance (already defined) OR
- *  - a factory function (sequelize, DataTypes) => Model
- */
-function loadModel(relPath) {
-  const mod = require(relPath);
+const basename = path.basename(__filename);
+const modelsDir = __dirname;
+
+const db = {
+  sequelize,
+  Sequelize
+};
+
+function loadModelFromFile(filePath) {
+  const mod = require(filePath);
   if (typeof mod === "function") {
-    // factory style, call with sequelize
-    try {
-      return mod(sequelize, Sequelize.DataTypes || Sequelize);
-    } catch (err) {
-      // If factory throws, fall back to assuming it's already a model instance
-      return mod;
-    }
+    return mod(sequelize, Sequelize.DataTypes || Sequelize);
   }
   return mod;
 }
 
-// load core models (use same pattern so it's resilient)
-const City = loadModel(path.join(__dirname, "city.model"));
-const State = loadModel(path.join(__dirname, "state.model"));
+fs.readdirSync(modelsDir)
+  .filter((file) => {
+    return file.indexOf(".") !== 0 && file !== basename && file.slice(-3) === ".js";
+  })
+  .forEach((file) => {
+    const full = path.join(modelsDir, file);
+    try {
+      const model = loadModelFromFile(full);
+      const key = model && model.name ? model.name : path.basename(file, ".js");
+      db[key] = model;
+    } catch (err) {
+      console.error(`Error loading model file ${file}:`, err);
+    }
+  });
 
-// load new models (zone, pincode, zonepincode)
-const Zone = loadModel(path.join(__dirname, "zone.model"));
-const Pincode = loadModel(path.join(__dirname, "pincode.model"));
-const ZonePincode = loadModel(path.join(__dirname, "zonepincode.model"));
-
-const db = {
-  sequelize,
-  Sequelize,
-  City,
-  State,
-  Zone,
-  Pincode,
-  ZonePincode,
-};
+if (!db.Role && db.role) db.Role = db.role;
+if (!db.Module && db.module) db.Module = db.module;
+if (!db.Action && db.action) db.Action = db.action;
+if (!db.Permission && db.permission) db.Permission = db.permission;
+if (!db.RolePermission && db.rolepermission) db.RolePermission = db.rolepermission;
+if (!db.User && db.users) db.User = db.users;
+if (!db.User && db.user) db.User = db.user;
 
 try {
-  // State <-> City
-  const cityHasState = !!(db.City && db.City.associations && Object.keys(db.City.associations).length);
-  const stateHasCities = !!(db.State && db.State.associations && Object.keys(db.State.associations).length);
-  if (!cityHasState && !stateHasCities) {
+  if (db.Module && db.Permission) {
+    db.Module.hasMany(db.Permission, { foreignKey: "module_id", as: "permissions", onDelete: "CASCADE" });
+    db.Permission.belongsTo(db.Module, { foreignKey: "module_id", as: "module" });
+  }
+
+  if (db.Action && db.Permission) {
+    db.Action.hasMany(db.Permission, { foreignKey: "action_id", as: "permissions", onDelete: "CASCADE" });
+    db.Permission.belongsTo(db.Action, { foreignKey: "action_id", as: "action" });
+  }
+
+  if (db.Role && db.Permission && db.RolePermission) {
+    db.Role.belongsToMany(db.Permission, {
+      through: db.RolePermission,
+      foreignKey: "role_id",
+      otherKey: "permission_id",
+      as: "permissions"
+    });
+
+    db.Permission.belongsToMany(db.Role, {
+      through: db.RolePermission,
+      foreignKey: "permission_id",
+      otherKey: "role_id",
+      as: "roles"
+    });
+
+    db.RolePermission.belongsTo(db.Role, { foreignKey: "role_id", as: "role" });
+    db.RolePermission.belongsTo(db.Permission, { foreignKey: "permission_id", as: "permission" });
+  }
+
+  if (db.Role && db.User) {
+    db.Role.hasMany(db.User, { foreignKey: "role_id", as: "users", onDelete: "SET NULL" });
+    db.User.belongsTo(db.Role, { foreignKey: "role_id", as: "role" });
+  }
+
+  if (db.State && db.City) {
     db.State.hasMany(db.City, { foreignKey: "state_id", as: "cities", onDelete: "CASCADE" });
     db.City.belongsTo(db.State, { foreignKey: "state_id", as: "state" });
-  } else {
-    // console.log("State<->City associations already present, skipping");
   }
 
-  // Zone -> City
-  const zoneHasCity = !!(db.Zone && db.Zone.associations && db.Zone.associations.city);
-  const cityHasZone = !!(db.City && db.City.associations && db.City.associations.zones);
-  if (!zoneHasCity && !cityHasZone) {
-    if (db.Zone && db.City) {
-      db.Zone.belongsTo(db.City, { foreignKey: "city_id", as: "city" });
-      db.City.hasMany(db.Zone, { foreignKey: "city_id", as: "zones", onDelete: "CASCADE" });
-    }
+  if (db.City && db.Zone) {
+    db.City.hasMany(db.Zone, { foreignKey: "city_id", as: "zones", onDelete: "CASCADE" });
+    db.Zone.belongsTo(db.City, { foreignKey: "city_id", as: "city" });
   }
 
-  const zoneHasPincodes = !!(db.Zone && db.Zone.associations && db.Zone.associations.pincodes);
-  const pincodeHasZones = !!(db.Pincode && db.Pincode.associations && db.Pincode.associations.zones);
-  const zpExists = !!(db.ZonePincode && db.ZonePincode.associations && Object.keys(db.ZonePincode.associations).length);
+  if (db.Zone && db.Pincode && db.ZonePincode) {
+    db.Zone.belongsToMany(db.Pincode, {
+      through: db.ZonePincode,
+      foreignKey: "zone_id",
+      otherKey: "pincode_id",
+      as: "pincodes"
+    });
 
-  if (!zoneHasPincodes && !pincodeHasZones) {
-    if (db.Zone && db.Pincode && db.ZonePincode) {
-      db.Zone.belongsToMany(db.Pincode, {
-        through: db.ZonePincode,
-        foreignKey: "zone_id",
-        otherKey: "pincode_id",
-        as: "pincodes",
-      });
-
-      db.Pincode.belongsToMany(db.Zone, {
-        through: db.ZonePincode,
-        foreignKey: "pincode_id",
-        otherKey: "zone_id",
-        as: "zones",
-      });
-      db.ZonePincode.belongsTo(db.Zone, { foreignKey: "zone_id", as: "zone" });
-      db.ZonePincode.belongsTo(db.Pincode, { foreignKey: "pincode_id", as: "pincode" });
-    }
+    db.Pincode.belongsToMany(db.Zone, {
+      through: db.ZonePincode,
+      foreignKey: "pincode_id",
+      otherKey: "zone_id",
+      as: "zones"
+    });
   }
 
 } catch (err) {
-  console.error("Error registering model associations:", err);
+  console.error("Error registering associations:", err);
 }
 
 module.exports = db;
